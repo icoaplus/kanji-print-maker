@@ -9,3 +9,7 @@
 .print-actions{display:flex;gap:8px;flex-wrap:wrap}#pdfResult a{display:inline-block;padding:12px 16px;background:#2b5193;color:white;border-radius:8px;margin-top:12px;font-weight:600}#pdfResult p{font-size:16px;line-height:1.6}@media print{#pdfResult{display:none!important}}
 
 .saved-panel{border-bottom:1px solid #d6dfed;padding-bottom:18px;margin-bottom:18px}.saved-panel select{width:100%;padding:10px;margin-top:5px;border:1px solid #c2cee0;border-radius:7px;background:white;font:inherit}.checks button{flex:1}[hidden]{display:none!important}
+
+.unit-list{max-height:260px;overflow:auto}.unit-list label{display:flex;gap:8px;align-items:center;margin:9px 0}.unit-list input{flex:none}#fontChoice,#printMode,#editUnit{width:100%;padding:10px;margin:6px 0 14px}.print-page+.print-page{margin-top:18px}@media print{html,body{height:auto}#paper{height:auto}.print-page{width:297mm;height:210mm;break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.print-page+.print-page{margin-top:0}}
+
+#unitGrade{width:100%;padding:10px;margin-top:6px;border:1px solid #c2cee0;border-radius:7px;background:white}button:disabled{cursor:default;opacity:.55}
