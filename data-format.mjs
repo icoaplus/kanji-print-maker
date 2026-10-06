@@ -7,7 +7,7 @@ export function normalizeState(s){
 }
 export function parseWorksheetFile(data){
  const rows=data?.schema==='kanji-print-maker'&&data.version===1?data.sheets:Array.isArray(data)?data:data?.questions?[{name:data.unitName||'漢字プリント',state:data}]:null;
- if(!Array.isArray(rows)||rows.length<1||rows.length>100)throw Error('読み込めるプリントデータではありません。');
+ if(!Array.isArray(rows)||rows.length<1)throw Error('読み込めるプリントデータではありません。');
  return rows.map((row,i)=>{if(!row||typeof row.name!=='string')throw Error('保存名がありません。');return {id:typeof row.id==='string'?row.id:'import-'+i,name:row.name.slice(0,100),state:normalizeState(row.state)}});
 }
 export function setKnownReadings(state,show){state.showKnownReadings=show;state.questions.forEach(q=>q.forEach(t=>{if(han(t.char)&&t.mode!=='blank'&&t.isNew!==true)t.showReading=show}));}

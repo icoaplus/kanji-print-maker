@@ -4,12 +4,8 @@ import {token,reconcile,isKanji,worksheet,hira,layout} from './core.mjs';
 import {suggestReadings} from './readings.mjs';
 import {worksheetPdf} from './pdf.mjs';
 const $=id=>document.getElementById(id);
-const examples=[['水を飲む',{水:'みず',飲:'の'}],['写真を写す',{写:'しゃ',真:'しん'}],['礼をする',{礼:'れい'}],['区に分ける',{区:'く',分:'わ'}],['学校に行く',{学:'がっ',校:'こう',行:'い'}],['青い空',{青:'あお',空:'そら'}],['元気に走る',{元:'げん',気:'き',走:'はし'}],['本を読む',{本:'ほん',読:'よ'}],['花を見つける',{花:'はな',見:'み'}],['雨がふる',{雨:'あめ'}]];
-// Each example has its own reading, so identical characters may have different readings.
 const state={fontChoice:'ud',printMode:'combined',batch:[],batchIndex:0,newKanji:'',showKnownReadings:true,unitName:'',studentName:'',printUnit:true,grade:'',marker:'',printMeta:true,printName:true,upper:5,lower:5,rows:2,guides:true,divider:false,numberVisible:Array(30).fill(true),questions:Array.from({length:30},()=>[])};
-examples.forEach(([text,readings],i)=>state.questions[i<5?i:15+i-5]=[...text].map(c=>token(c,readings[c]||'')));
-// 写真を写す uses different readings for the two occurrences of 写.
-state.questions[1][3].reading='うつ';
+Object.assign(state,normalizeState(preparedData.sheets[0].state));
 const storageKey='kanji-print-maker-v1',draftKey=storageKey+'-draft';
 let savedSheets=[],storageError='',draftTimer;
 try{const saved=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(saved))savedSheets=saved;const draft=JSON.parse(localStorage.getItem(draftKey)||'null');if(validState(draft))Object.assign(state,draft)}catch(e){storageError='ブラウザの保存を利用できません。入力内容はこの画面で編集できます。'}
@@ -35,15 +31,15 @@ $('pdf').onclick=async()=>{
  const button=$('pdf');button.disabled=true;button.textContent='PDFを作っています…';
  try{const blob=await worksheetPdf(outputSheets().map(s=>worksheet(s).svg));if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl=URL.createObjectURL(blob);
  const link=el('a','PDFを開く');link.href=pdfUrl;link.target='_blank';link.rel='noopener';
- const note=el('p','「PDFを開く」を押し、iPadの共有メニューから「プリント」を選んでください。PDFを保存してから開くこともできます。');
+ const note=el('p','PC・タブレットで使えます。「PDFを開く」または「PDFを保存」を選んでください。iPadでは開いたPDFの共有メニューから印刷できます。');
  const save=el('a','PDFを保存');save.href=pdfUrl;save.download='kanji-print.pdf';save.style.marginLeft='8px';
  $('pdfResult').replaceChildren(link,save,note);$('pdfResult').scrollIntoView({block:'nearest'});
- }catch(e){$('pdfResult').textContent='PDFを作れませんでした。Safariでこのページを開き、もう一度お試しください。';console.error(e)}
- finally{button.disabled=false;button.textContent='PDFを作る（iPad用）'}
+ }catch(e){$('pdfResult').textContent='PDFを作れませんでした。ページを再読み込みしてお試しください。iPadではSafariで開いてください。';console.error(e)}
+ finally{button.disabled=false;button.textContent='PDFを作る'}
 };
 
 function syncFields(){ $('fontChoice').value=state.fontChoice||'ud';$('printMode').value=state.printMode||'combined';refreshBatch();$('newKanji').value=state.newKanji||'';$('showKnownReadings').checked=state.showKnownReadings!==false;for(const key of ['unitName','grade','marker','studentName','upper','lower'])$(key).value=state[key]||'';for(const key of ['guides','divider','printUnit','printMeta','printName'])$(key).checked=state[key]!==false;$('oneRow').checked=state.rows===1;$('twoRows').checked=state.rows!==1;}
-function refreshSaved(id=''){const select=$('savedSheets');select.replaceChildren(new Option('選んでください',''));for(const item of savedSheets)select.append(new Option(item.name,item.id));select.value=id;$('saveOverwrite').disabled=!id;$('loadSheet').disabled=!id;$('deleteSheet').disabled=!id;if(storageError)$('saveStatus').textContent=storageError;}
+function refreshSaved(id=''){const select=$('savedSheets');select.replaceChildren(new Option('選んでください',''));for(const item of savedSheets)select.append(new Option(item.name,item.id));select.value=id;$('saveOverwrite').disabled=!id;$('loadSheet').disabled=!id;$('deleteSheet').disabled=!id;$('exportAllSaved').disabled=savedSheets.length===0;if(storageError)$('saveStatus').textContent=storageError;}
 function commitSaved(next,id,message){try{localStorage.setItem(storageKey,JSON.stringify(next));savedSheets=next;refreshSaved(id);$('saveStatus').textContent=message;return true}catch(e){$('saveStatus').textContent='保存できませんでした。ブラウザの空き容量や保存設定を確認してください。';return false}}
 $('savedSheets').onchange=()=>{const item=savedSheets.find(s=>s.id===$('savedSheets').value);if(item)$('saveName').value=item.name;const id=$('savedSheets').value;for(const key of ['saveOverwrite','loadSheet','deleteSheet'])$(key).disabled=!id;};
 $('saveNew').onclick=()=>{const id=globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random();const name=$('saveName').value.trim()||state.unitName||'漢字プリント '+new Date().toLocaleString('ja-JP');commitSaved([...savedSheets,{id,name,state:structuredClone(state)}],id,'保存しました。');};
@@ -102,4 +98,15 @@ $('exportData').onclick=()=>{
   const link=el('a');link.href=url;link.download=(sheet.name.replace(/[\\/:*?"<>|]/g,'_')||'kanji-print')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
   $('dataStatus').textContent='編集したデータを書き出しました。別の端末でも読み込んで編集できます。';
  }catch(e){$('dataStatus').textContent='書き出せませんでした。'+e.message}
+};
+
+function downloadWorksheetData(sheets,filename){
+ const data={schema:'kanji-print-maker',version:1,sheets};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+ const link=el('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+$('exportAllSaved').onclick=()=>{
+ if(!savedSheets.length){$('saveStatus').textContent='保存したプリントがありません。先に「新しく保存」を押してください。';return}
+ try{const sheets=savedSheets.map(item=>({id:item.id,name:item.name,state:normalizeState(item.state)}));downloadWorksheetData(sheets,'kanji-print-saved-'+new Date().toISOString().slice(0,10)+'.json');$('saveStatus').textContent=`保存した${sheets.length}件をまとめて書き出しました。未保存の編集内容は含まれません。`}
+ catch(e){$('saveStatus').textContent='まとめて書き出せませんでした。'+e.message}
 };
